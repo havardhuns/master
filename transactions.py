@@ -29,11 +29,6 @@ bulk_call_api = bulk_api.BulkApi(api_client)
 currency = "btc"
 block_height = 500000
 
-calls = 1
-seconds = time()
-time_limit = 60*60
-max_calls = 900
-buffer = 5*60
 
 block_transactions = blocks_api.list_block_txs(currency, block_height)
 
@@ -51,27 +46,23 @@ print("Retreived", len(addresses), "from block with height", block_height)
 print("Getting all transactions addresses have been involved in")
 
 for address in tqdm(addresses):
-    elapsed_time = time() - seconds
-    calls += 2
+    try:
+        # get all transactions for address
+        address_transactions = addresses_api.list_address_txs('btc', address)
+    except graphsense.ApiException as e:
+        print("Exception when calling AddressesApi->list_address_txs:",
+              e.status, e.reason)
 
-    if calls > max_calls:
-        print("number of transactions:", len(transactions))
-        if elapsed_time > time_limit:
-            print("resetting counters")
-            seconds = 0
-            calls = 0
-        else:
-            sleepTime = time_limit - elapsed_time + buffer
-            print("sleeping for", sleepTime/60, "minutes")
-            sleep(sleepTime)
-            print("resetting counters")
-            seconds = 0
-            calls = 0
-
-    address_transactions = addresses_api.list_address_txs('btc', address)
     address_transactions_hashes = [
         address_transaction.tx_hash for address_transaction in address_transactions.address_txs]
-    body = {"tx_hash": address_transactions_hashes}
 
-    api_response = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
+    try:
+        # get detailed data for all the transactions for address
+        body = {"tx_hash": address_transactions_hashes}
+        api_response = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
+    except graphsense.ApiException as e:
+        print("Exception when calling bulk api->get_tx:", e.status, e.reason)
+        continue
+
+    #insert in database
     transactions_collection.insert_many(api_response)
