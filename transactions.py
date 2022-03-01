@@ -8,8 +8,9 @@ from datetime import datetime
 from tqdm import tqdm
 from time import sleep, time
 
-client = pymongo.MongoClient(
-    "mongodb://havardhuns:pwd@10.212.136.61/master?retryWrites=true&w=majority")
+#connectURI = "mongodb://havardhuns:pwd@10.212.136.61/master?retryWrites=true&w=majority"
+connectURI = "mongodb://havardhuns:pwd@localhost/master?retryWrites=true&w=majority"
+client = pymongo.MongoClient(connectURI)
 db = client["master"]
 transactions_collection = db["transactions"]
 
