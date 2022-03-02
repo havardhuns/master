@@ -6,8 +6,8 @@ connectURI = "mongodb://havardhuns:pwd@localhost/master?retryWrites=true&w=major
 
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
-transactions_collection = db["transactions"]
+test_collection = db["test"]
 
 transactions_collection.insert_one({"test": "Funker"})
 
-print(transactions_collection.find_one_and_delete({"test":{'$exists': True}})['test'])
+print(test_collection.find_one_and_delete({"test":{'$exists': True}})['test'])
