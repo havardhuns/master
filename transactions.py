@@ -65,13 +65,21 @@ for address in tqdm(addresses):
         try:
             # get detailed data for all the transactions for address
             body = {"tx_hash": address_transactions_hashes}
-            api_response = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
+            detailed_transactions_list = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
         except graphsense.ApiException as e:
             print("Exception when calling bulk api->get_tx:", e.status, e.reason)
             continue
 
         #insert in database
+        for transaction in detailed_transactions_list:
+            transaction.update( {"_id": transaction['tx_hash']})
         addresses_collection.insert_one({"_id": address})
-        transactions_collection.insert_many(api_response)
+        try:
+            transactions_collection.insert_many(detailed_transactions_list, ordered=False)
+        except pymongo.errors.BulkWriteError as e:
+            #amount_of_transactions = len(detailed_transactions_list)
+            #inserted = e.details["nInserted"]
+            #print("Insterted", inserted, "transactions.", amount_of_transactions -  inserted, "already in db")
+            continue
     if count > 1:
         print("Duplicate addresses:", address)
