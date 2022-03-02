@@ -13,9 +13,11 @@ connectURI = "mongodb://havardhuns:pwd@localhost/master?retryWrites=true&w=major
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
 transactions_collection = db["transactions"]
+addresses_collection = db["addresses"]
 
-# empty collection
-transactions_collection.delete_many({})
+# empty collections
+#transactions_collection.delete_many({})
+#addresses_collection.delete_many({})
 
 api_key = "i/cM9eSFHOvISa17naCYeo/g6qFCweoN"
 configuration = graphsense.Configuration(host="https://api.graphsense.info")
@@ -43,27 +45,33 @@ for transaction in block_transactions:
         len(outp.address) > 0 and outp.address[0] not in addresses and addresses.append(
             outp.address[0])
 
-print("Retreived", len(addresses), "from block with height", block_height)
+print("Retreived", len(addresses), " addresses from block with height", block_height)
 print("Getting all transactions addresses have been involved in")
 
 for address in tqdm(addresses):
-    try:
-        # get all transactions for address
-        address_transactions = addresses_api.list_address_txs('btc', address)
-    except graphsense.ApiException as e:
-        print("Exception when calling AddressesApi->list_address_txs:",
-              e.status, e.reason)
+    count = addresses_collection.count_documents({"_id" : address})
+    if count == 0:
+        try:
+            # get all transactions for address
+            address_transactions = addresses_api.list_address_txs('btc', address)
+        except graphsense.ApiException as e:
+            print("Exception when calling AddressesApi->list_address_txs:",
+                e.status, e.reason)
+            continue
 
-    address_transactions_hashes = [
-        address_transaction.tx_hash for address_transaction in address_transactions.address_txs]
+        address_transactions_hashes = [
+            address_transaction.tx_hash for address_transaction in address_transactions.address_txs]
 
-    try:
-        # get detailed data for all the transactions for address
-        body = {"tx_hash": address_transactions_hashes}
-        api_response = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
-    except graphsense.ApiException as e:
-        print("Exception when calling bulk api->get_tx:", e.status, e.reason)
-        continue
+        try:
+            # get detailed data for all the transactions for address
+            body = {"tx_hash": address_transactions_hashes}
+            api_response = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
+        except graphsense.ApiException as e:
+            print("Exception when calling bulk api->get_tx:", e.status, e.reason)
+            continue
 
-    #insert in database
-    transactions_collection.insert_many(api_response)
+        #insert in database
+        addresses_collection.insert_one({"_id": address})
+        transactions_collection.insert_many(api_response)
+    if count > 1:
+        print("Duplicate addresses:", address)
