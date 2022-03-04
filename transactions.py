@@ -64,7 +64,7 @@ for address in tqdm(addresses):
 
         try:
             # get detailed data for all the transactions for address
-            body = {"tx_hash": address_transactions_hashes}
+            body = {"tx_hash": address_transactions_hashes, "include_io": True}
             detailed_transactions_list = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
         except graphsense.ApiException as e:
             print("Exception when calling bulk api->get_tx:", e.status, e.reason)
