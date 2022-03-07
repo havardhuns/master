@@ -1,15 +1,19 @@
 import json
-import graphsense
-import pymongo
-from graphsense.api import addresses_api, entities_api, blocks_api, bulk_api
-import matplotlib.pyplot as plt
-from statistics import mode
+import os
 from datetime import datetime
-from tqdm import tqdm
+from statistics import mode
 from time import sleep, time
 
-#connectURI = "mongodb://havardhuns:pwd@10.212.136.61/master?retryWrites=true&w=majority"
-connectURI = "mongodb://havardhuns:pwd@localhost/master?retryWrites=true&w=majority"
+import graphsense
+import matplotlib.pyplot as plt
+import pymongo
+from dotenv import load_dotenv
+from graphsense.api import addresses_api, blocks_api, bulk_api, entities_api
+from tqdm import tqdm
+
+load_dotenv('.env')
+
+connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
 transactions_collection = db["transactions"]
@@ -19,7 +23,7 @@ addresses_collection = db["addresses"]
 #transactions_collection.delete_many({})
 #addresses_collection.delete_many({})
 
-api_key = "i/cM9eSFHOvISa17naCYeo/g6qFCweoN"
+api_key = os.environ.get("api_key")
 configuration = graphsense.Configuration(host="https://api.graphsense.info")
 configuration.api_key["api_key"] = api_key
 

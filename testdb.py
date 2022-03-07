@@ -1,8 +1,11 @@
+import os
+
 import pymongo
+from dotenv import load_dotenv
 
+load_dotenv(".env")
 
-#connectURI = "mongodb://havardhuns:pwd@10.212.136.61/master?retryWrites=true&w=majority"
-connectURI = "mongodb://havardhuns:pwd@localhost/master?retryWrites=true&w=majority"
+connectURI = os.environ.get("connectURI")
 
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
