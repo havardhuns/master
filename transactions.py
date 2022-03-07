@@ -61,25 +61,31 @@ for address in tqdm(addresses):
 
         address_transactions_hashes = [
             address_transaction.tx_hash for address_transaction in address_transactions.address_txs]
-
-        try:
-            # get detailed data for all the transactions for address
-            body = {"tx_hash": address_transactions_hashes, "include_io": True}
-            detailed_transactions_list = bulk_call_api.bulk_json('btc', 'get_tx', 1, body)
-        except graphsense.ApiException as e:
-            print("Exception when calling bulk api->get_tx:", e.status, e.reason)
-            continue
-
+        detailed_transactions_list = []
+        i = 0
+        while i < len(address_transactions_hashes):
+            try:
+                # get detailed data for all the transactions for address
+                body = {"tx_hash": address_transactions_hashes[i:i+50], "include_io": True}
+                detailed_transactions_list.extend(bulk_call_api.bulk_json('btc', 'get_tx', 1, body, async_req= True).get())
+            except graphsense.ApiException as e:
+                if (e.status == 429):
+                    sleep(int(e.headers["Retry-After"]) + 60)
+                else:
+                    print("Exception when calling bulk api->get_tx:", e.status, e.reason)
+                continue
+            i += 50
         #insert in database
-        for transaction in detailed_transactions_list:
-            transaction.update( {"_id": transaction['tx_hash']})
-        addresses_collection.insert_one({"_id": address})
-        try:
-            transactions_collection.insert_many(detailed_transactions_list, ordered=False)
-        except pymongo.errors.BulkWriteError as e:
-            #amount_of_transactions = len(detailed_transactions_list)
-            #inserted = e.details["nInserted"]
-            #print("Insterted", inserted, "transactions.", amount_of_transactions -  inserted, "already in db")
-            continue
+        if detailed_transactions_list:
+            for transaction in detailed_transactions_list:
+                transaction.update( {"_id": transaction['tx_hash']})
+            addresses_collection.insert_one({"_id": address})
+            try:
+                transactions_collection.insert_many(detailed_transactions_list, ordered=False)
+            except pymongo.errors.BulkWriteError as e:
+                #amount_of_transactions = len(detailed_transactions_list)
+                #inserted = e.details["nInserted"]
+                #print("Insterted", inserted, "transactions.", amount_of_transactions -  inserted, "already in db")
+                continue
     if count > 1:
         print("Duplicate addresses:", address)
