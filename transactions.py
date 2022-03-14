@@ -1,15 +1,16 @@
 import json
 import os
-from datetime import datetime
-from statistics import mode
-from time import sleep, time
-
+from time import sleep
 import graphsense
-import matplotlib.pyplot as plt
 import pymongo
 from dotenv import load_dotenv
 from graphsense.api import addresses_api, blocks_api, bulk_api, entities_api
 from tqdm import tqdm
+
+'''
+Select a block height. Get all transactions in the block, 
+and all transactions done by every input and output address in these transactions.
+'''
 
 load_dotenv('.env')
 
@@ -18,10 +19,6 @@ client = pymongo.MongoClient(connectURI)
 db = client["master"]
 transactions_collection = db["transactions"]
 addresses_collection = db["addresses"]
-
-# empty collections
-#transactions_collection.delete_many({})
-#addresses_collection.delete_many({})
 
 api_key = os.environ.get("api_key")
 configuration = graphsense.Configuration(host="https://api.graphsense.info")
@@ -36,11 +33,11 @@ bulk_call_api = bulk_api.BulkApi(api_client)
 currency = "btc"
 block_height = 500000
 
-
 block_transactions = blocks_api.list_block_txs(currency, block_height)
 
 addresses = []
 
+# get all input and output addresses
 for transaction in block_transactions:
     for inp in transaction.inputs.value:
         len(inp.address) > 0 and inp.address[0] not in addresses and addresses.append(
@@ -49,18 +46,20 @@ for transaction in block_transactions:
         len(outp.address) > 0 and outp.address[0] not in addresses and addresses.append(
             outp.address[0])
 
-print("Retreived", len(addresses), " addresses from block with height", block_height)
+print("Retreived", len(addresses),
+      " addresses from block with height", block_height)
 print("Getting all transactions addresses have been involved in")
 
 for address in tqdm(addresses):
-    count = addresses_collection.count_documents({"_id" : address})
+    count = addresses_collection.count_documents({"_id": address})
     if count == 0:
         try:
             # get all transactions for address
-            address_transactions = addresses_api.list_address_txs('btc', address)
+            address_transactions = addresses_api.list_address_txs(
+                'btc', address)
         except graphsense.ApiException as e:
             print("Exception when calling AddressesApi->list_address_txs:",
-                e.status, e.reason)
+                  e.status, e.reason)
             continue
 
         address_transactions_hashes = [
@@ -70,26 +69,28 @@ for address in tqdm(addresses):
         while i < len(address_transactions_hashes):
             try:
                 # get detailed data for all the transactions for address
-                body = {"tx_hash": address_transactions_hashes[i:i+50], "include_io": True}
-                detailed_transactions_list.extend(bulk_call_api.bulk_json('btc', 'get_tx', 1, body, async_req= True).get())
+                body = {
+                    "tx_hash": address_transactions_hashes[i:i+50], "include_io": True}
+                detailed_transactions_list.extend(bulk_call_api.bulk_json(
+                    'btc', 'get_tx', 1, body, async_req=True).get())
             except graphsense.ApiException as e:
                 if (e.status == 429):
                     sleep(int(e.headers["Retry-After"]) + 60)
                 else:
-                    print("Exception when calling bulk api->get_tx:", e.status, e.reason)
+                    print("Exception when calling bulk api->get_tx:",
+                          e.status, e.reason)
                 continue
             i += 50
         #insert in database
         if detailed_transactions_list:
             for transaction in detailed_transactions_list:
-                transaction.update( {"_id": transaction['tx_hash']})
+                transaction.update({"_id": transaction['tx_hash']})
             addresses_collection.insert_one({"_id": address})
             try:
-                transactions_collection.insert_many(detailed_transactions_list, ordered=False)
+                transactions_collection.insert_many(
+                    detailed_transactions_list, ordered=False)
             except pymongo.errors.BulkWriteError as e:
                 #amount_of_transactions = len(detailed_transactions_list)
                 #inserted = e.details["nInserted"]
                 #print("Insterted", inserted, "transactions.", amount_of_transactions -  inserted, "already in db")
                 continue
-    if count > 1:
-        print("Duplicate addresses:", address)

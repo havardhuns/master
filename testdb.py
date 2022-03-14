@@ -4,7 +4,6 @@ import pymongo
 from dotenv import load_dotenv
 
 load_dotenv(".env")
-
 connectURI = os.environ.get("connectURI")
 
 client = pymongo.MongoClient(connectURI)
@@ -13,4 +12,4 @@ test_collection = db["test"]
 
 test_collection.insert_one({"test": "Funker"})
 
-print(test_collection.find_one_and_delete({"test":{'$exists': True}})['test'])
+print(test_collection.find_one_and_delete({"test": {'$exists': True}})['test'])
