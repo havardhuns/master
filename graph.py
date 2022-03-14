@@ -1,13 +1,14 @@
 import networkx as nx
 import pymongo
 from tqdm import tqdm
-
+import os
+from dotenv import load_dotenv
 
 address = "3NWBZKC9UZ6fYRDMwLDAM6hoD1mkT5WgAS"
 level = 2
 G = nx.DiGraph()
 
-connectURI = "mongodb://havardhuns:pwd@10.212.136.61/master?retryWrites=true&w=majority"
+connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
 collection = db['transactions']

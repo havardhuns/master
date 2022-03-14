@@ -4,12 +4,16 @@ from graphsense.api import addresses_api, entities_api, blocks_api, bulk_api
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import networkx as nx
+import os
+from dotenv import load_dotenv
+
+load_dotenv('.env')
 
 level = 2
 address = "3NWBZKC9UZ6fYRDMwLDAM6hoD1mkT5WgAS"
 G = nx.DiGraph()
 
-api_key = "i/cM9eSFHOvISa17naCYeo/g6qFCweoN"
+api_key = os.environ.get("api_key")
 configuration = graphsense.Configuration(host="https://api.graphsense.info")
 configuration.api_key["api_key"] = api_key
 
