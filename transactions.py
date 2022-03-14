@@ -1,23 +1,26 @@
 import json
+import os
+from time import sleep
 import graphsense
 import pymongo
-from graphsense.api import addresses_api, blocks_api, bulk_api
+from dotenv import load_dotenv
+from graphsense.api import addresses_api, blocks_api, bulk_api, entities_api
 from tqdm import tqdm
-from time import sleep
 
 '''
 Select a block height. Get all transactions in the block, 
 and all transactions done by every input and output address in these transactions.
 '''
 
-#connectURI = "mongodb://havardhuns:pwd@10.212.136.61/master?retryWrites=true&w=majority"
-connectURI = "mongodb://havardhuns:pwd@localhost/master?retryWrites=true&w=majority"
+load_dotenv('.env')
+
+connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
 transactions_collection = db["transactions"]
 addresses_collection = db["addresses"]
 
-api_key = "i/cM9eSFHOvISa17naCYeo/g6qFCweoN"
+api_key = os.environ.get("api_key")
 configuration = graphsense.Configuration(host="https://api.graphsense.info")
 configuration.api_key["api_key"] = api_key
 

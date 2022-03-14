@@ -17,4 +17,7 @@ statistics==1.0.3.5
 tqdm==4.62.3
 urllib3==1.26.8
 zope.interface==5.4.0
+python-dotenv==0.4.0
+dotenv-cli==2.2.0
 networkx==2.7.1
+
