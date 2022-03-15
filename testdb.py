@@ -1,7 +1,10 @@
 import os
-
 import pymongo
 from dotenv import load_dotenv
+
+'''
+test if you can connect to database
+'''
 
 load_dotenv(".env")
 connectURI = os.environ.get("connectURI")

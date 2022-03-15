@@ -4,6 +4,12 @@ from tqdm import tqdm
 import os
 from dotenv import load_dotenv
 
+'''
+Create a graph from the transactions saved in mongodb in transactionsFromBlock.py.
+'''
+
+load_dotenv('.env')
+
 address = "3NWBZKC9UZ6fYRDMwLDAM6hoD1mkT5WgAS"
 level = 2
 G = nx.DiGraph()

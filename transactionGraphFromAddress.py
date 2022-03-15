@@ -9,7 +9,19 @@ from dotenv import load_dotenv
 
 load_dotenv('.env')
 
-level = 2
+'''
+This script should let you choose a level for how far out you want the graph to go.
+Level 1 - all transactions done by an address
+Level 2 - all transactions done by an address, and all transactions done by the 
+participants in these transactions.
+level 3 - One step further
+etc.
+
+At the moment this is just hard coded for level 2, we could maybe use recursion to solve this,
+but it will be slow.
+'''
+
+level = 2  # not implemented
 address = "3NWBZKC9UZ6fYRDMwLDAM6hoD1mkT5WgAS"
 G = nx.DiGraph()
 

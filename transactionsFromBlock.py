@@ -8,8 +8,14 @@ from graphsense.api import addresses_api, blocks_api, bulk_api, entities_api
 from tqdm import tqdm
 
 '''
-Select a block height. Get all transactions in the block, 
+Select a currency, and block height. Get all transactions in the block, 
 and all transactions done by every input and output address in these transactions.
+Transactions are saved in mongodb running on VM. You need to be on eduroam or VPN
+to execute.
+
+This script takes about 24 hours to execute, but it can be cancelled and resumed.
+I executed it on the VM using the nohup command.
+This injects detailed information about ~1 million transactions into the database. 
 '''
 
 load_dotenv('.env')
