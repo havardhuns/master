@@ -19,15 +19,15 @@ G = nx.DiGraph()
 connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
-collection = db['linked-inputs']
+collection = db['linked-inputs-test']
 collection2 = db['unique-inputs']
 transactions = db['transactions']
 
 addresses = collection.find()
 addresses2 = collection2.find()
 
-min_value = 2
-max_value = 15
+min_value = 3
+max_value = 10
 occurences = [0] * (max_value - min_value + 1)
 
 for address in tqdm(addresses):
@@ -35,22 +35,17 @@ for address in tqdm(addresses):
     if min_value <= number_of_addresses <= max_value:
         occurences[number_of_addresses - min_value] += 1
 
-    '''if len(occurences) < number_of_addresses:
-        occurences.extend([0] * (number_of_addresses - len(occurences)))
-    occurences[number_of_addresses - 1] += 1'''
-
-occurences2 = [0] * (max_value - min_value + 1)
+'''occurences2 = [0] * (max_value - min_value + 1)
 for address in tqdm(addresses2):
     number_of_addresses = len(address["addresses"])
     if min_value <= number_of_addresses <= max_value:
-        occurences2[number_of_addresses - min_value] += 1
+        occurences2[number_of_addresses - min_value] += 1'''
 
 plt.plot(range(min_value, max_value+1), occurences,
          label="number of addresses an entity has")
-plt.plot(range(min_value, max_value+1), occurences2,
-         label="unique inputs in transactions, number of addresses")
+#plt.plot(range(min_value, max_value+1), occurences2, label="unique inputs in transactions, number of addresses")
 plt.xticks(range(min_value, max_value+1))
-#plt.yticks(range(0, occurences2[0], 100))
+plt.yticks(range(0, occurences[0], 500))
 plt.grid(True)
 plt.title("Aggregated inputs")
 leg = plt.legend()

@@ -55,7 +55,7 @@ for transaction in tqdm(transactions):
                     }, upsert=False)
                 except pymongo.errors.WriteError as e:
                     print("writeError, update")
-                    print(transaction["_id"])
+                    print(matching)
             break
     if not exists:
         try:
