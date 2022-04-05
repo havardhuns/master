@@ -21,22 +21,12 @@ G = nx.DiGraph()
 connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
-transaction_collection = db['transactions']
-collection = db['linked-inputs']
+output_collection_1 = db['aggregated-outputs-block-500']
+output_collection_2 = db['aggregated-outputs-block-500-old']
 
-transactions = transaction_collection.find({"coinbase": False})
+outputs_1 = output_collection_1.find({})
 
-addresses = []
-for transaction in tqdm(transactions):
-    addresses_in_transaction = [inp["address"][0][""]
-                                for inp in transaction["inputs"]]
-    addresses_in_transaction = list(
-        OrderedDict.fromkeys(addresses_in_transaction))
-    addresses.extend(addresses_in_transaction)
-print(len(list(set(addresses))))
-
-addresses2 = []
-for lol in tqdm(collection.find({})):
-    address_list = lol["addresses"]
-    addresses2.extend(lol["addresses"])
-print(len(list(set(addresses2))))
+for output in outputs_1:
+    output_2 = output_collection_2.find_one({"tx_hash": output["tx_hash"]})
+    if (output != output_2):
+        print(output["tx_hash"])
