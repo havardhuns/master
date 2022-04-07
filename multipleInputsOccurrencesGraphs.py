@@ -12,16 +12,11 @@ Creates graphs visualizing how many inputs are in transactions
 
 load_dotenv('.env')
 
-address = "3NWBZKC9UZ6fYRDMwLDAM6hoD1mkT5WgAS"
-level = 2
-G = nx.DiGraph()
-
 connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
-collection = db['transactions']
+collection = db['transactions-block-500']
 addresses = db['addresses']
-addresses_collection = db[f'nodes-{address}']
 
 transactions = collection.find({"coinbase": False})
 
