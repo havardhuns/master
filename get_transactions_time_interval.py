@@ -68,7 +68,7 @@ def get_io(tx_hashes, io):
         i += 50
     return io_list
 
-def formatInputOutput(puts):
+def format_input_output(puts):
     formatted_puts = []
     for put in puts:
         if "_info" in put and put["_info"] == "no data":
@@ -88,8 +88,8 @@ def formatValue(value):
 
 def format_transactions(transactions, inputs, outputs):
     formatted_transactions = []
-    inputs = formatInputOutput(inputs)
-    outputs = formatInputOutput(outputs)
+    inputs = format_input_output(inputs)
+    outputs = format_input_output(outputs)
     for transaction in transactions:
         fortmatted_transaction = {"_id": transaction["tx_hash"], "coinbase": transaction["coinbase"], "height": None, "inputs": [], "outputs": [], "timestamp": transaction["timestamp"], "total_input": {}, "total_output": {}, "tx_hash": transaction["tx_hash"], "tx_type": transaction["tx_type"]}
         fortmatted_transaction["height"] = transaction["height"]["value"]
@@ -120,11 +120,11 @@ for block_height in tqdm(range(start_block, end_block+1)):
     count = time_transactions.count_documents({"height": block_height})
     if count == 0:
         try:
-                block_transactions = blocks_api.list_block_txs('btc', block_height)
-                tx_hashes = [transaction["tx_hash"] for transaction in block_transactions]
-                inputs = get_io(tx_hashes, "inputs")
-                outputs = get_io(tx_hashes, "outputs")
-                time_transactions.insert_many(format_transactions(block_transactions, inputs, outputs))
+            block_transactions = blocks_api.list_block_txs('btc', block_height)
+            tx_hashes = [transaction["tx_hash"] for transaction in block_transactions]
+            inputs = get_io(tx_hashes, "inputs")
+            outputs = get_io(tx_hashes, "outputs")
+            time_transactions.insert_many(format_transactions(block_transactions, inputs, outputs))
         except graphsense.ApiException as e:
             print("Exception:",
                 e.status, e.reason)
