@@ -24,7 +24,7 @@ entities_api = entities_api.EntitiesApi(api_client)
 connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
-collection = db['time-transactions']
+collection = db['block-transactions']
 aggregated_transactions = db["aggregated-transactions"]
 
 
@@ -41,9 +41,16 @@ def get_first_transaction_hash(address):
 
 
 def get_addresses(puts, json=False):
-    if json:
-        return [put["address"][0][""] for put in puts]
-    return [put["address"][0] for put in puts]
+    addresses = []
+    for put in puts:
+        try:
+            if json:
+                addresses.append(put["address"][0][""])
+            else:
+                addresses.append(put["address"][0])
+        except IndexError as e:
+            continue
+    return addresses
 
 def get_output_value(output):
     value = output["value"] * 10**(-8)
@@ -63,8 +70,16 @@ def is_used_as_output_later(address, current_transaction_tx_hash):
             tx_hashes = tx_hashes[:current_transaction_index]
         body = {
                 "tx_hash": tx_hashes, "io": "outputs"}
-        outputs = bulk_api.bulk_json(
+        try:
+            outputs = bulk_api.bulk_json(
                 'btc', 'get_tx_io', 1, body)
+        except graphsense.ApiException as e:
+            if (e.status == 429):
+                sleep(int(e.headers["Retry-After"]) + 60)
+                outputs = bulk_api.bulk_json(
+                'btc', 'get_tx_io', 1, body)
+            else:
+                raise e
         if address in get_addresses(outputs, json=True):
             return True
         if current_transaction_in_transactions:
