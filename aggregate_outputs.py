@@ -27,9 +27,6 @@ db = client["master"]
 collection = db['block-transactions']
 aggregated_transactions = db["aggregated-transactions"]
 
-
-transactions = collection.find({})
-
 def get_entity_from_inputs_outputs(puts):
     for put in puts:
         entity = addresses_api.get_address_entity('btc', put["address"][0])
@@ -52,10 +49,6 @@ def get_addresses(puts, json=False):
             continue
     return addresses
 
-def get_output_value(output):
-    value = output["value"] * 10**(-8)
-    return value
-
 def is_used_as_output_later(address, current_transaction_tx_hash):
     response = addresses_api.list_address_txs(
         'btc', address, pagesize=100)
@@ -77,7 +70,7 @@ def is_used_as_output_later(address, current_transaction_tx_hash):
             if (e.status == 429):
                 sleep(int(e.headers["Retry-After"]) + 60)
                 outputs = bulk_api.bulk_json(
-                'btc', 'get_tx_io', 1, body)
+                'btc', 'get_tx_io', 100, body)
             else:
                 raise e
         if address in get_addresses(outputs, json=True):
@@ -95,9 +88,9 @@ def has_self_change_address(inputs, outputs):
             return True
     return False
 
-def value_has_more_than_four_decimals(output):
-    value = output["value"]["value"] * 10**(-8)
-    number_of_decimals = len(str(value).split(".")[1])
+def value_has_more_than_four_decimals(value):
+    value = '{0:.8f}'.format(value * 10**(-8)).strip("0")
+    number_of_decimals = len(value.split(".")[1])
     return number_of_decimals > 4
 
 def get_index_of_tx_hash(tx_hash, transactions):
@@ -177,7 +170,7 @@ def find_change_address(transaction):
             return change_address
     
         # (6) Decimal representation of the value for address O has more than 4 digits after the dot.
-        if not value_has_more_than_four_decimals(change_address["otc_output"]):
+        if not value_has_more_than_four_decimals(change_address["otc_output"]["value"]["value"]):
             return change_address
     
         # (9) ~O has not been OTC addressed in previous transactions
@@ -210,7 +203,7 @@ def has_been_otc_addressed_previously(otc_address_candidate):
     other_output =  [output for output in outputs if output["address"][0] != otc_address_candidate][0]
 
     # (6) Decimal representation of the value for address O has more than 4 digits after the dot.
-    if not value_has_more_than_four_decimals(otc_output):
+    if not value_has_more_than_four_decimals(otc_output["value"]["value"]):
         return False
 
     # (7) There is no address among the outputs that also appears in the inputs (self-change address); 
@@ -274,7 +267,7 @@ def find_change_address_strict(transaction):
         change_address["other_output"] = output_1
     
     # (7) Decimal representation of the value for address O has more than 4 digits after the dot.
-        if not value_has_more_than_four_decimals(change_address["otc_output"]):
+        if not value_has_more_than_four_decimals(change_address["otc_output"]["value"]["value"]):
             return None
 
     # (8) Address ~O is reused as output addresses in some later transactions.
@@ -287,25 +280,27 @@ def find_change_address_strict(transaction):
 
     return change_address
 
+if __name__ == '__main__':
+    transactions = collection.find({})
 
-for transaction in tqdm(transactions):
-    count = aggregated_transactions.count_documents({"tx_hash": transaction["tx_hash"]})
-    if count == 0:
-        aggregated_transaction = {"_id": transaction["_id"], "tx_hash": transaction["tx_hash"]}
-        try:  
-            input_entity = get_entity_from_inputs_outputs(transaction["inputs"])
-            aggregated_transaction["aggregated_inputs"] = {"entity": input_entity}
-            sleep(1)
-            aggregated_transaction["aggregated_outputs"] = find_change_address(transaction)
-            if aggregated_transaction["aggregated_outputs"]["otc_output"]:
-                aggregated_transaction["aggregated_outputs"]["entity"] = get_entity_from_inputs_outputs([aggregated_transaction["aggregated_outputs"]["otc_output"]])
-            else:
-                aggregated_transaction["aggregated_outputs"] = None
-        except graphsense.ApiException as e:
-            print("Exception when calling AddressesApi->list_address_txs:",
-                e.status, e.reason)
-            continue
-        except IndexError as e:
-            print("\nException, probably empty address array. tx_hash:", transaction["tx_hash"])
-            continue
-        aggregated_transactions.insert_one(aggregated_transaction)
+    for transaction in tqdm(transactions):
+        count = aggregated_transactions.count_documents({"tx_hash": transaction["tx_hash"]})
+        if count == 0:
+            aggregated_transaction = {"_id": transaction["_id"], "tx_hash": transaction["tx_hash"]}
+            try:  
+                input_entity = get_entity_from_inputs_outputs(transaction["inputs"])
+                aggregated_transaction["aggregated_inputs"] = {"entity": input_entity}
+                sleep(1)
+                aggregated_transaction["aggregated_outputs"] = find_change_address(transaction)
+                if aggregated_transaction["aggregated_outputs"]["otc_output"]:
+                    aggregated_transaction["aggregated_outputs"]["entity"] = get_entity_from_inputs_outputs([aggregated_transaction["aggregated_outputs"]["otc_output"]])
+                else:
+                    aggregated_transaction["aggregated_outputs"] = None
+            except graphsense.ApiException as e:
+                print("Exception when calling AddressesApi->list_address_txs:",
+                    e.status, e.reason)
+                continue
+            except IndexError as e:
+                print("\nException, probably empty address array. tx_hash:", transaction["tx_hash"])
+                continue
+            aggregated_transactions.insert_one(aggregated_transaction)
