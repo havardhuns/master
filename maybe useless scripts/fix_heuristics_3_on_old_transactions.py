@@ -28,7 +28,8 @@ client = pymongo.MongoClient(connectURI)
 db = client["master"]
 aggregated_transactions_collection = db["aggregated-transactions"]
 changed = 0
-aggregated_transactions = aggregated_transactions_collection.find({"aggregated_outputs.heuristics.3": True})
+aggregated_transactions = aggregated_transactions_collection.find( { "$or": [ { 'aggregated_outputs.heuristics.1': True }, { 'aggregated_outputs.heuristics.1': True } ] } )
+
 for aggregated_transaction in aggregated_transactions:
     otc_output_value = aggregated_transaction["aggregated_outputs"]["otc_output"]["value"]["value"]
     if not value_has_more_than_four_decimals(otc_output_value):

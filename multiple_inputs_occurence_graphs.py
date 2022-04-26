@@ -15,10 +15,9 @@ load_dotenv('.env')
 connectURI = os.environ["connectURI"]
 client = pymongo.MongoClient(connectURI)
 db = client["master"]
-collection = db['transactions-block-500']
-addresses = db['addresses']
+collection = db['block-transactions']
 
-transactions = collection.find({"coinbase": False})
+transactions = collection.find()
 
 occurences_1_2_3plus = [0] * 3
 occurrences_3_to_20 = [0] * 18

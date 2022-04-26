@@ -120,7 +120,7 @@ def find_change_address(transaction):
     if transaction['coinbase']:
         return change_address
 
-    # (7) There is no address among the outputgs that also appears in the inputs (self-change address); 
+    # (7) There is no address among the outputs that also appears in the inputs (self-change address); 
     if has_self_change_address(transaction['inputs'], transaction['outputs']):
         return change_address
 
@@ -281,17 +281,17 @@ def find_change_address_strict(transaction):
     return change_address
 
 if __name__ == '__main__':
-    transactions = collection.find({})
+    transactions = collection.find({}, no_cursor_timeout=True).batch_size(10).sort("height", -1)
 
     for transaction in tqdm(transactions):
         count = aggregated_transactions.count_documents({"tx_hash": transaction["tx_hash"]})
         if count == 0:
             aggregated_transaction = {"_id": transaction["_id"], "tx_hash": transaction["tx_hash"]}
-            try:  
+            try:
+                aggregated_transaction["aggregated_outputs"] = find_change_address(transaction)
+                sleep(1)
                 input_entity = get_entity_from_inputs_outputs(transaction["inputs"])
                 aggregated_transaction["aggregated_inputs"] = {"entity": input_entity}
-                sleep(1)
-                aggregated_transaction["aggregated_outputs"] = find_change_address(transaction)
                 if aggregated_transaction["aggregated_outputs"]["otc_output"]:
                     aggregated_transaction["aggregated_outputs"]["entity"] = get_entity_from_inputs_outputs([aggregated_transaction["aggregated_outputs"]["otc_output"]])
                 else:
@@ -304,3 +304,4 @@ if __name__ == '__main__':
                 print("\nException, probably empty address array. tx_hash:", transaction["tx_hash"])
                 continue
             aggregated_transactions.insert_one(aggregated_transaction)
+    transactions.close()
