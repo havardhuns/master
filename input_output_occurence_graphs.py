@@ -22,9 +22,12 @@ transactions = collection.find()
 occurences_inputs = [0,0,0,0,0]
 occurences_outputs = [0,0,0,0,0]
 
+total_number_of_inputs = 0
+total_number_of_transactions = collection.count_documents({})
 
 for transaction in tqdm(transactions):
     number_of_inputs = len(transaction["inputs"])
+    total_number_of_inputs += number_of_inputs
     if number_of_inputs < 5:
         occurences_inputs[number_of_inputs-1] += 1
     else:
@@ -52,3 +55,8 @@ plt.title("Number of outputs in transactions")
 plt.grid(axis = 'y')
 plt.savefig('graphs/output_occurence.png')
 plt.close()
+
+print("total number of inputs")
+print(total_number_of_inputs)
+print("average")
+print(total_number_of_inputs / total_number_of_transactions) 
