@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from graphsense.api import addresses_api, bulk_api, txs_api, entities_api
 from tqdm import tqdm
 
+
 load_dotenv('.env')
 
 
@@ -26,6 +27,7 @@ client = pymongo.MongoClient(connectURI)
 db = client["master"]
 collection = db['block-transactions']
 aggregated_transactions = db["aggregated-transactions"]
+proposed_otc_collection = db["proposed-otc"]
 
 def get_entity_from_inputs_outputs(puts):
     for put in puts:
@@ -55,7 +57,7 @@ def is_used_as_output_later(address, current_transaction_tx_hash):
     if response["address_txs"][0]["tx_hash"] == current_transaction_tx_hash:
         return False
     while response:
-        sleep(5)
+        sleep(1)
         tx_hashes = [transaction["tx_hash"] for transaction in response["address_txs"]]
         current_transaction_in_transactions = current_transaction_tx_hash in tx_hashes
         if current_transaction_in_transactions:
@@ -70,14 +72,14 @@ def is_used_as_output_later(address, current_transaction_tx_hash):
             if (e.status == 429):
                 sleep(int(e.headers["Retry-After"]) + 60)
                 outputs = bulk_api.bulk_json(
-                'btc', 'get_tx_io', 100, body)
+                'btc', 'get_tx_io', 5000, body)
             else:
                 raise e
         if address in get_addresses(outputs, json=True):
             return True
         if current_transaction_in_transactions:
             return False
-        response = addresses_api.list_address_txs('btc', address, page=response['next_page'], pagesize=1000)
+        response = addresses_api.list_address_txs('btc', address, page=response['next_page'], pagesize=500)
     
 
 def has_self_change_address(inputs, outputs):
@@ -92,6 +94,14 @@ def value_has_more_than_four_decimals(value):
     value = '{0:.8f}'.format(value * 10**(-8)).strip("0")
     number_of_decimals = len(value.split(".")[1])
     return number_of_decimals > 4
+
+def otc_value_is_smaller_than_inputs(otc_value, inputs):
+    input_values = [inp["value"]["value"] * 10**(-8) for inp in inputs]
+    otc_value = otc_value * 10**(-8)
+    for input_value in input_values:
+        if input_value < otc_value:
+            return False
+    return True
 
 def get_index_of_tx_hash(tx_hash, transactions):
     for i, transaction in enumerate(transactions):
@@ -174,115 +184,109 @@ def find_change_address(transaction):
             return change_address
     
         # (9) ~O has not been OTC addressed in previous transactions
-        if not has_been_otc_addressed_previously(change_address["other_output"]["address"][0]):
+        if has_not_been_otc_addressed_previously(change_address["other_output"]["address"][0]):
             change_address["heuristics"]["3"] = True
     return change_address
 
-def has_been_otc_addressed_previously(otc_address_candidate):
+def has_not_been_otc_addressed_previously(otc_address_candidate):
     first_transaction_for_address_hash = get_first_transaction_hash(otc_address_candidate)
     transaction = txs_api.get_tx('btc', first_transaction_for_address_hash, include_io=True)
     outputs = transaction["outputs"].value
     inputs = transaction["inputs"].value
     # (4) This is the first appearance of address O;
     if otc_address_candidate not in get_addresses(outputs):
-        return False
+        return True
 
     # (1) The transaction t is not coin generation;
     if transaction['coinbase']:
-        return False
+        return True
     
     # (2) The transaction t has exactly two outputs. 
     if len(outputs) != 2:
-        return False
+        return True
 
     # (3) The number of t inputs is not equal to two.
-    if len(outputs) == 2:
-        return False
+    if len(inputs) == 2:
+        return True
 
     otc_output = [output for output in outputs if output["address"][0] == otc_address_candidate][0]
     other_output =  [output for output in outputs if output["address"][0] != otc_address_candidate][0]
 
     # (6) Decimal representation of the value for address O has more than 4 digits after the dot.
     if not value_has_more_than_four_decimals(otc_output["value"]["value"]):
-        return False
+        return True
 
     # (7) There is no address among the outputs that also appears in the inputs (self-change address); 
     if has_self_change_address(inputs, outputs):
-        return False
+        return True
 
     # (5) This is not the first appearance of address ~O
     first_transaction_for_other_address_hash = get_first_transaction_hash(other_output["address"][0])
-    if transaction["tx_hash"] == first_transaction_for_other_address_hash:
-        return False
+    return transaction["tx_hash"] == first_transaction_for_other_address_hash
 
-    '''# (8) Address ~O is reused as output addresses in some later transactions.
-    index_of_transaction = get_index_of_tx_hash(transaction["tx_hash"], other_transactions)
-    if not is_used_as_output_later(other_output["address"][0], other_transactions, transaction["tx_hash"]):
-        continue'''
-    return True
+def has_not_been_otc_addressed_previously_2(otc_address_candidate):
+    first_transaction_for_address_hash = get_first_transaction_hash(otc_address_candidate)
+    transaction = txs_api.get_tx('btc', first_transaction_for_address_hash, include_io=True)
+    outputs = transaction["outputs"].value
+    inputs = transaction["inputs"].value
+    # (1) This is the first appearance of address O;
+    if otc_address_candidate not in get_addresses(outputs):
+        return True
 
-#todo
-def find_change_address_strict(transaction):
-    change_address = {
-            "_id": transaction["tx_hash"],
-            "tx_hash": transaction["tx_hash"],
-            "otc_output": None,
-            "other_output": None,
-        }
-    
-    # (1) The transaction t is not a coin generation. 
+    # (2) The transaction t is not coin generation;
     if transaction['coinbase']:
-        return None
+        return True
 
-    # (2) The transaction t has exactly two outputs. 
-    if len(transaction['outputs']) != 2:
-        return None
-
-    # (3) The number of t inputs is not equal to two.
-    if len(transaction['inputs']) == 2:
-            return None
+    # (3) There is no address among the outputs that also appears in the inputs (self-change address); 
+    if has_self_change_address(inputs, outputs):
+        return True
     
-    # (4) There is no address among the outputs that also appears in the inputs (self-change address); 
-    if has_self_change_address(transaction['inputs'], transaction['outputs']):
+    # (4) The transaction t has exactly two outputs. 
+    if len(outputs) != 2:
+        return True
+
+    # (6) The number of t inputs is not equal to two.
+    if len(inputs) == 2:
+        return True
+
+    # (8) The value of O is smaller than any of the inputs
+    otc_output = [output for output in outputs if output["address"][0] == otc_address_candidate][0]
+    if not otc_value_is_smaller_than_inputs(otc_output["value"]["value"], inputs):
+        return True
+
+    # (5) This is not the first appearance of the other output address ~O on the blockchain OR ~O is reused as output address in some later transaction
+    other_output =  [output for output in outputs if output["address"][0] != otc_address_candidate][0]
+    first_transaction_for_other_address_hash = get_first_transaction_hash(other_output["address"][0])
+    if transaction["tx_hash"] != first_transaction_for_other_address_hash:
         return False
-
-    # (5) This is the first appearance of address O
-    # (6) This is not the first appearance of address ~O
-    output_1 = transaction["outputs"][0]
-    output_2 = transaction["outputs"][1]
-    output_address_1_first_transaction = get_first_transaction_hash(output_1["address"][0])
-    output_address_2_first_transaction = get_first_transaction_hash(output_2["address"][0])
-
-    is_first_transaction_of_output_address_1 = output_address_1_first_transaction == transaction['tx_hash']
-    is_first_transaction_of_output_address_2 = output_address_2_first_transaction == transaction['tx_hash']
-
-    if is_first_transaction_of_output_address_1 == is_first_transaction_of_output_address_2:
+    elif is_used_as_output_later(other_output["address"][0], transaction['tx_hash']):
         return False
+    else:
+        return True
 
-    if is_first_transaction_of_output_address_1:
-            change_address["otc_output"] = output_1
-            change_address["other_output"] = output_2
-    elif is_first_transaction_of_output_address_2:
-        change_address["otc_output"] = output_2
-        change_address["other_output"] = output_1
-    
-    # (7) Decimal representation of the value for address O has more than 4 digits after the dot.
-        if not value_has_more_than_four_decimals(change_address["otc_output"]["value"]["value"]):
-            return None
 
-    # (8) Address ~O is reused as output addresses in some later transactions.
-    if not is_used_as_output_later(change_address["other_output"]["address"][0], transaction["tx_hash"]):
-        return False
 
-    # (9) ~O has not been OTC addressed in previous transactions
-    if has_been_otc_addressed_previously(change_address["other_output"]["address"][0]):
-        return False
-
-    return change_address
+def otc_4():
+    aggregated_transactions = aggregated_transactions.find({}).sort("height", -1)
+    aggregated_transactions = [x for x in aggregated_transactions]
+    for aggregated_transaction in tqdm(aggregated_transactions):
+        if aggregated_transaction["aggregated_outputs"]:
+            if aggregated_transaction["aggregated_outputs"]["heuristics"]["1"] or aggregated_transaction["aggregated_outputs"]["heuristics"]["2"]:
+                count = proposed_otc_collection.count_documents({"tx_hash" : aggregated_transaction["tx_hash"]})
+                if count == 0:
+                    transaction = collection.find_one({"tx_hash" : aggregated_transaction["tx_hash"]})
+                    proposed_otc = {"_id": aggregated_transaction["tx_hash"], "tx_hash": aggregated_transaction["tx_hash"], "6": False, "7": False, "8": False}
+                    proposed_otc["6"] = len(transaction["inputs"]) != 2
+                    try:
+                        proposed_otc["7"] = has_not_been_otc_addressed_previously_2(aggregated_transaction["aggregated_outputs"]["other_output"]["address"][0])
+                    except graphsense.ApiException as e:
+                        proposed_otc["7"] = None
+                    proposed_otc["8"] = otc_value_is_smaller_than_inputs(aggregated_transaction["aggregated_outputs"]["otc_output"]["value"]["value"], transaction["inputs"])
+                    proposed_otc_collection.insert_one(proposed_otc)
 
 if __name__ == '__main__':
-    transactions = collection.find({}, no_cursor_timeout=True).batch_size(10).sort("height", -1)
-
+    transactions = collection.find({})[10650:21000]
+    transactions = [x for x in transactions]
     for transaction in tqdm(transactions):
         count = aggregated_transactions.count_documents({"tx_hash": transaction["tx_hash"]})
         if count == 0:
@@ -305,3 +309,4 @@ if __name__ == '__main__':
                 continue
             aggregated_transactions.insert_one(aggregated_transaction)
     transactions.close()
+

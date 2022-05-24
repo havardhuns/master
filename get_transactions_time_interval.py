@@ -159,6 +159,8 @@ graphsense_statistics = general_api.get_statistics()
 latest_block_height = [statistic['no_blocks'] - 1
                         for statistic in graphsense_statistics['currencies'] if statistic['name'] == 'btc'][0]
 
-for block_height in range(100000, latest_block_height, 100000):
+'''for block_height in range(200000, latest_block_height, 100000):
     print("getting transactions from block", block_height)
-    get_transactions_from_blocks(get_blocks(block_height, 10000))
+    get_transactions_from_blocks(get_blocks(block_height, 10000))'''
+
+print(get_blocks(700000, 10000))

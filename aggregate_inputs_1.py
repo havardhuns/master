@@ -40,11 +40,11 @@ for height in range(100000, 700001, 100000):
     for transaction in tqdm(transactions):
         inputs = get_inputs(transaction["inputs"])
         if inputs:
-            inputs = list(
+            inputs = lip(
                 OrderedDict.fromkeys(inputs))
             exists = False
             for address in inputs:
-                matching = collection.find_one({"aggregated_inputs": address})
+                matching = collection.find_one({"aggregated_inputs_1": address})
                 if matching:
                     exists = True
                     collection.update_one({
@@ -54,7 +54,7 @@ for height in range(100000, 700001, 100000):
                                     'tx_hashes': transaction["tx_hash"]
                                 }
                             }, upsert=False)
-                    old_list = matching["aggregated_inputs"]
+                    old_list = matching["aggregated_inputs_1"]
                     if set(old_list) != set(matching):
                         old_list.extend(
                             address for address in inputs if address not in old_list)
@@ -63,7 +63,7 @@ for height in range(100000, 700001, 100000):
                                 '_id': matching['_id']
                             }, {
                                 '$set': {
-                                    'aggregated_inputs': old_list
+                                    'aggregated_inputs_1': old_list
                                 }
                             }, upsert=False)
                         except pymongo.errors.WriteError as e:
@@ -73,15 +73,14 @@ for height in range(100000, 700001, 100000):
             if not exists:
                 try:
                     collection.insert_one(
-                        {"_id": inputs[0], "aggregated_inputs": inputs, "aggregated_outputs": [], "tx_hashes": [transaction["tx_hash"]]})
-                    collection.create_index("aggregated_inputs")
+                        {"_id": inputs[0], "aggregated_inputs_1": inputs, "aggregated_outputs": [], "tx_hashes": [transaction["tx_hash"]]})
+                    collection.create_index("aggregated_inputs_1")
                 except pymongo.errors.WriteError as e:
                     print("writeError, insert")
                     print(transaction["_id"])
-            aggregated_output = aggregated_outputs_collection.find_one({"_id": transaction["tx_hash"]})
+            '''aggregated_output = aggregated_outputs_collection.find_one({"_id": transaction["tx_hash"]})
             if aggregated_output and aggregated_output["aggregated_outputs"]:
                 aggregated_output = {"address": aggregated_output["aggregated_outputs"]["otc_output"]["address"], "heuristics": aggregated_output["aggregated_outputs"]["heuristics"]}
-                print(aggregated_output)
                 if matching:
                     id = matching["_id"]
                 else:
@@ -92,7 +91,7 @@ for height in range(100000, 700001, 100000):
                                     '$push': {
                                         'aggregated_outputs': aggregated_output
                                     }
-                                }, upsert=False)
+                                }, upsert=False)'''
                 
 
 
