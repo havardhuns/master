@@ -35,12 +35,12 @@ def get_inputs(inputs):
 
 for height in range(100000, 700001, 100000):
     transactions = transaction_collection.find({ "height" : {"$gt": height-50000, "$lt": height+50000}})
-    collection = db[f'linked-inputs-{height}']
+    collection = db[f'linked-inputs-{height}-1']
 
     for transaction in tqdm(transactions):
         inputs = get_inputs(transaction["inputs"])
         if inputs:
-            inputs = lip(
+            inputs = list(
                 OrderedDict.fromkeys(inputs))
             exists = False
             for address in inputs:
@@ -73,25 +73,12 @@ for height in range(100000, 700001, 100000):
             if not exists:
                 try:
                     collection.insert_one(
-                        {"_id": inputs[0], "aggregated_inputs_1": inputs, "aggregated_outputs": [], "tx_hashes": [transaction["tx_hash"]]})
+                        {"_id": inputs[0], "aggregated_inputs_1": inputs, "tx_hashes": [transaction["tx_hash"]]})
                     collection.create_index("aggregated_inputs_1")
                 except pymongo.errors.WriteError as e:
                     print("writeError, insert")
                     print(transaction["_id"])
-            '''aggregated_output = aggregated_outputs_collection.find_one({"_id": transaction["tx_hash"]})
-            if aggregated_output and aggregated_output["aggregated_outputs"]:
-                aggregated_output = {"address": aggregated_output["aggregated_outputs"]["otc_output"]["address"], "heuristics": aggregated_output["aggregated_outputs"]["heuristics"]}
-                if matching:
-                    id = matching["_id"]
-                else:
-                    id = inputs[0]
-                collection.update_one({
-                                    '_id': id
-                                }, {
-                                    '$push': {
-                                        'aggregated_outputs': aggregated_output
-                                    }
-                                }, upsert=False)'''
+            
                 
 
 

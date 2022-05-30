@@ -90,7 +90,7 @@ for height in range(100000, 700001, 100000):
                     if not matching:
                         try:
                             collection.insert_one(
-                                {"_id": address, "aggregated_inputs_2": address, "tx_hashes": [transaction["tx_hash"]]})
+                                {"_id": address, "aggregated_inputs_2": [address], "tx_hashes": [transaction["tx_hash"]]})
                             collection.create_index("aggregated_inputs_2")
                         except pymongo.errors.WriteError as e:
                             print("writeError, insert")

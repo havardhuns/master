@@ -30,7 +30,7 @@ def get_number_of_addresses(transactions):
         outputs += len(transaction["outputs"])
     return inputs, outputs
 
-for height in [100000, 300000, 400000,500000,600000,700000]:
+for height in [100000,400000,500000,600000,700000]:
     transactions = block_transactions_collection.find({ "height" : {"$gt": height-50000, "$lt": height+50000}})
     no_inputs, no_outputs = get_number_of_addresses(transactions)
 
@@ -49,7 +49,7 @@ for height in [100000, 300000, 400000,500000,600000,700000]:
             heights[height]["heuristics"][3] -= len([ao for ao in transaction["aggregated_outputs"] if ao["heuristics"]["1"] and ao["heuristics"]["2"] and ao["heuristics"]["3"]])
 print(heights)
 
-r = np.arange(6)
+r = np.arange(5)
 width = 0.15
 
 _input = []
@@ -94,6 +94,5 @@ plt.ylabel("Ratio of address reduction")
 plt.xlabel("Block")
 plt.title("Address reduction")
   
-plt.xticks(r + width*2,['~100000', '~300000', '~400000', '~500000', '~600000', '~700000'])
+plt.xticks(r + width*2,['~100000','~400000', '~500000', '~600000', '~700000'])
 plt.legend()
-plt.show()

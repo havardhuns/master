@@ -57,7 +57,7 @@ def is_used_as_output_later(address, current_transaction_tx_hash):
     if response["address_txs"][0]["tx_hash"] == current_transaction_tx_hash:
         return False
     while response:
-        sleep(1)
+        #sleep(1)
         tx_hashes = [transaction["tx_hash"] for transaction in response["address_txs"]]
         current_transaction_in_transactions = current_transaction_tx_hash in tx_hashes
         if current_transaction_in_transactions:
@@ -72,14 +72,14 @@ def is_used_as_output_later(address, current_transaction_tx_hash):
             if (e.status == 429):
                 sleep(int(e.headers["Retry-After"]) + 60)
                 outputs = bulk_api.bulk_json(
-                'btc', 'get_tx_io', 5000, body)
+                'btc', 'get_tx_io', 1000, body)
             else:
                 raise e
         if address in get_addresses(outputs, json=True):
             return True
         if current_transaction_in_transactions:
             return False
-        response = addresses_api.list_address_txs('btc', address, page=response['next_page'], pagesize=500)
+        response = addresses_api.list_address_txs('btc', address, page=response['next_page'], pagesize=100)
     
 
 def has_self_change_address(inputs, outputs):
@@ -293,7 +293,7 @@ if __name__ == '__main__':
             aggregated_transaction = {"_id": transaction["_id"], "tx_hash": transaction["tx_hash"]}
             try:
                 aggregated_transaction["aggregated_outputs"] = find_change_address(transaction)
-                sleep(1)
+                #sleep(1)
                 input_entity = get_entity_from_inputs_outputs(transaction["inputs"])
                 aggregated_transaction["aggregated_inputs"] = {"entity": input_entity}
                 if aggregated_transaction["aggregated_outputs"]["otc_output"]:

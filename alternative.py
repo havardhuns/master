@@ -1,7 +1,7 @@
 import os
 import graphsense
 from dotenv import load_dotenv
-from graphsense.api import blocks_api, general_api, bulk_api
+from graphsense.api import blocks_api, general_api, bulk_api, txs_api
 import datetime
 from tqdm import tqdm
 from time import sleep
@@ -23,6 +23,7 @@ api_client = graphsense.ApiClient(configuration)
 blocks_api = blocks_api.BlocksApi(api_client)
 general_api = general_api.GeneralApi(api_client)
 bulk_api = bulk_api.BulkApi(api_client)
+txs_api = txs_api.TxsApi(api_client)
 
 
 
@@ -117,6 +118,15 @@ def get_blocks(block_height, number_of_transactions):
         else:
             increment = -(increment - 1)
     return sorted(blocks)
+
+def get_detailed_transaciton_info_alternative(tx_hashes):
+    transactions = []
+    for tx_hash in tx_hashes:
+        try:
+            transactions.append(txs_api.get_tx("btc", tx_hash, include_io=True))
+        except graphsense.ApiException as e:
+            print("exception")
+            continue
        
 
 
@@ -124,16 +134,23 @@ def get_transactions_from_blocks(block_list):
     for block_height in tqdm(block_list):
         count = block_transactions.count_documents({"height": block_height})
         if count == 0:
+            transactions = blocks_api.list_block_txs('btc', block_height)
+            tx_hashes = [transaction["tx_hash"] for transaction in transactions]
             try:
-                transactions = blocks_api.list_block_txs('btc', block_height)
-                tx_hashes = [transaction["tx_hash"] for transaction in transactions]
                 inputs = get_io(tx_hashes, "inputs")
                 outputs = get_io(tx_hashes, "outputs")
                 block_transactions.insert_many(format_transactions(transactions, inputs, outputs))
             except graphsense.ApiException as e:
-                print("Exception:",
+                if e.status == 502:
+                    print("alternative")
+                    formatted_transactions = get_detailed_transaciton_info_alternative(tx_hashes)
+                    for transaction in formatted_transactions:
+                        transaction.update({"_id": transaction['tx_hash']})
+                        block_transactions.insert_many(formatted_transactions)
+                else:
+                    print("Exception:",
                     e.status, e.reason)
-                continue
+                    continue
 
 def get_transactions_in_time_interval(start_date, end_date):
     graphsense_statistics = general_api.get_statistics()
@@ -148,7 +165,6 @@ def get_transactions_in_time_interval(start_date, end_date):
 
 start_date = datetime.datetime(2022, 2, 1).timestamp()
 end_date = datetime.datetime(2022, 2, 3).timestamp()
-
 
 start_block, end_block = get_transactions_in_time_interval(start_date, end_date)
 print(start_block)

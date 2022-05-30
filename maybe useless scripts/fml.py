@@ -9,7 +9,7 @@ lol3 = [300,150,200,250, 200]
   
 n=5
 r = np.arange(n)
-width = 0.15
+width = 0.25
   
   
 plt.bar(r, Women, color = 'b',
@@ -34,7 +34,7 @@ plt.ylabel("Number of people voted")
 plt.title("Number of people voted in each year")
   
 # plt.grid(linestyle='--')
-plt.xticks(r + width*2,['2018','2019','2020','2021', '2022'])
+plt.xticks(r + width,['2018','2019','2020','2021', '2022'])
 plt.legend()
   
 plt.show()
