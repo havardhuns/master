@@ -42,7 +42,6 @@ for height in range(100000, 700001, 100000):
         if no_outputs == 2:
             aggregated_output = aggregated_outputs_collection.find_one({"tx_hash": transaction["tx_hash"]})
             otc = aggregated_output and aggregated_output["aggregated_outputs"] is not None
-            print(otc)
         if no_outputs == 1 or (no_outputs == 2 and otc):
             inputs = get_inputs(transaction["inputs"])
             if inputs:

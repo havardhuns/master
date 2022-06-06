@@ -34,14 +34,23 @@ for block in blocks:
     fee_list = blocks[block]
     fee_btc = sorted(blocks[block]["btc"])
     fee_usd = sorted(blocks[block]["usd"])
-    blocks[block]["btc"] = (sum(fee_btc) / len(fee_btc))
-    blocks[block]["usd"] = (sum(fee_usd) / len(fee_usd))
+    blocks[block]["btc"] = fee_btc[len(fee_btc)//2]
+    blocks[block]["usd"] = fee_usd[len(fee_usd)//2]
+    
 
-fees = [blocks[block]["btc"] for block in blocks]
+fees_btc = [blocks[block]["btc"] for block in blocks]
+fees_usd = [blocks[block]["usd"] for block in blocks]
 
-labels = ["100k", "200k", "300k", "400k", "500k", "600k", "700k"]
-plt.bar(labels, fees)
-plt.xlabel("Fee")
-plt.ylabel("Block")
+labels = ["~100k", "~200k", "~300k", "~400k", "~500k", "~600k", "~700k"]
+plt.bar(labels, fees_btc)
+plt.xlabel("Block")
+plt.ylabel("Fee in BTC")
 plt.grid(axis = 'y')
 plt.show()
+
+plt.bar(labels, fees_usd)
+plt.xlabel("Block")
+plt.ylabel("Fee in BTC")
+plt.grid(axis = 'y')
+plt.show()
+

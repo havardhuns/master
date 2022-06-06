@@ -55,6 +55,8 @@ def sum_lists(first, second):
 
 labels = ["1", "2", "3", "4", "5+"]
 
+print(occurences_outputs)
+
 
 plt.bar(labels, occurences_inputs, color=['green', 'red', 'green', 'green', 'green'], edgecolor = 'black')
 plt.title("Number of inputs in transactions")
