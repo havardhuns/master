@@ -1,16 +1,16 @@
 import unittest
-from aggregate_outputs import value_has_more_than_four_decimals, get_addresses, has_self_change_address, get_index_of_tx_hash
+from heuristics_otc import value_has_more_than_four_digits_after_dot, get_addresses, has_self_change_address, otc_value_is_smaller_than_all_input_values
 
 class MyTest(unittest.TestCase):
     def test_value_has_more_than_four_decimals(self):
-        self.assertEqual(value_has_more_than_four_decimals(123450000), False)
-        self.assertEqual(value_has_more_than_four_decimals(100010000), False)
-        self.assertEqual(value_has_more_than_four_decimals(123456000), True)
-        self.assertEqual(value_has_more_than_four_decimals(100000000), False)
-        self.assertEqual(value_has_more_than_four_decimals(1000), True)
-        self.assertEqual(value_has_more_than_four_decimals(10000), False)
-        self.assertEqual(value_has_more_than_four_decimals(1), True)
-        self.assertEqual(value_has_more_than_four_decimals(0), False)
+        self.assertFalse(value_has_more_than_four_digits_after_dot(123450000))
+        self.assertFalse(value_has_more_than_four_digits_after_dot(100010000))
+        self.assertTrue(value_has_more_than_four_digits_after_dot(123456000))
+        self.assertFalse(value_has_more_than_four_digits_after_dot(100000000))
+        self.assertTrue(value_has_more_than_four_digits_after_dot(1000))
+        self.assertFalse(value_has_more_than_four_digits_after_dot(10000))
+        self.assertTrue(value_has_more_than_four_digits_after_dot(1))
+        self.assertFalse(value_has_more_than_four_digits_after_dot(0))
 
     def test_get_addresses(self):
         puts = [ { "address" : [ "address1" ] } ]
@@ -39,40 +39,60 @@ class MyTest(unittest.TestCase):
         self.assertEqual(get_addresses(puts, json=True), [])
 
     def test_has_self_change_address(self):
-        inputs = [ { "address" : [ "address1" ] } ]
-        outputs = [ { "address" : [ "address1" ] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), True)
+        transaction = {
+            "inputs": [ { "address" : [ "address1" ] } ],
+            "outputs": [ { "address" : [ "address1" ] } ]
+        }
+        self.assertTrue(has_self_change_address(transaction))
 
-        inputs = [ { "address" : [ "address1" ] } ]
-        outputs = [ { "address" : [ "address2" ] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), False)
+        transaction = {
+            "inputs": [ { "address" : [ "address1" ] } ],
+            "outputs": [ { "address" : [ "address2" ] } ]
+        }
+        self.assertFalse(has_self_change_address(transaction))
 
-        inputs = [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ]
-        outputs = [ { "address" : [ "address3" ] }, { "address" : [ "address1" ] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), True)
+        transaction = {
+            "inputs": [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ],
+            "outputs": [ { "address" : [ "address3" ] }, { "address" : [ "address1" ] } ]
+        }
+        self.assertTrue(has_self_change_address(transaction))
 
-        inputs = [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ]
-        outputs = [ { "address" : [ "address3" ] }, { "address" : [ "address4" ] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), False)
+        transaction = {
+            "inputs": [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ],
+            "outputs": [ { "address" : [ "address3" ] }, { "address" : [ "address4" ] } ]
+        }
+        self.assertFalse(has_self_change_address(transaction))
 
-        inputs = [ { "address" : [ "address1" ] }, { "address" : [ "address1" ] } ]
-        outputs = [ { "address" : [ "address1" ] }, { "address" : [ "address1" ] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), True)
+        transaction = {
+            "inputs": [ { "address" : [ "address1" ] } ],
+            "outputs": [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ]
+        }
+        self.assertTrue(has_self_change_address(transaction))
 
-        inputs = [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ]
-        outputs = [ { "address" : [ "address3" ] }, { "address" : [] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), False)
+        transaction = {
+            "inputs": [ { "address" : [ "address1" ] }, { "address" : [ "address2" ] } ],
+            "outputs": [ { "address" : [ "address3" ] }, { "address" : [ ] } ]
+        }
+        self.assertFalse(has_self_change_address(transaction))
 
-        inputs = [ { "address" : [] } ]
-        outputs = [ { "address" : [ "address1" ] } ]
-        self.assertEqual(has_self_change_address(inputs, outputs), False)
+        transaction = {
+            "inputs": [ { "address" : [ ] } ],
+            "outputs": [ { "address" : [ "address1" ] }]
+        }
+        self.assertFalse(has_self_change_address(transaction))
 
-    def test_get_index_of_tx_hash(self):
-        transactions = [{"tx_hash": "1"}, {"tx_hash": "2"}, {"tx_hash": "3"}]
+    def test_otc_value_is_smaller_than_all_input_values(self):
+        inputs = [{"value": {"value": 100000000}}]
+        self.assertTrue(otc_value_is_smaller_than_all_input_values(999, inputs))
 
-        self.assertEqual(get_index_of_tx_hash("1", transactions), 0)
-        self.assertEqual(get_index_of_tx_hash("2", transactions), 1)
-        self.assertEqual(get_index_of_tx_hash("3", transactions), 2)
-        self.assertEqual(get_index_of_tx_hash("4", transactions), False)
+        inputs = [{"value": {"value": 999}}]
+        self.assertFalse(otc_value_is_smaller_than_all_input_values(1000, inputs))
 
-        
+        inputs = [{"value": {"value": 1000}}, {"value": {"value": 1001}}, ]
+        self.assertTrue(otc_value_is_smaller_than_all_input_values(999, inputs))
+
+        inputs = [{"value": {"value": 999}}, {"value": {"value": 1001}}, ]
+        self.assertFalse(otc_value_is_smaller_than_all_input_values(1000, inputs))
+
+        inputs = [{"value": {"value": 1000}}, {"value": {"value": 2000}}, {"value": {"value": 998}}, {"value": {"value": 99912931299}},]
+        self.assertFalse(otc_value_is_smaller_than_all_input_values(999, inputs))  

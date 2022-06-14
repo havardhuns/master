@@ -96,4 +96,3 @@ plt.title("Address reduction")
   
 plt.xticks(r + width*2,['~100000','~400000', '~500000', '~600000', '~700000'])
 plt.legend()
-plt.show()

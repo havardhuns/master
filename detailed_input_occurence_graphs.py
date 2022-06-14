@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 '''
 Creates graphs visualizing how many inputs are in transactions
+Endre til count, sjekk messenger med Marcus.
 '''
 
 load_dotenv('.env')
