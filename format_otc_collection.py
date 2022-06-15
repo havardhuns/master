@@ -33,6 +33,7 @@ def format_h_4():
     aggregated_transactions_collection = db["otc-outputs-new_copy"]
     aggregated_transactions_new = db["otc-addresses-data-set-2"]
     aggregated_transactions = aggregated_transactions_collection.find()
+    aggregated_transactions = [aggregated_transaction for aggregated_transaction in aggregated_transactions]
     for aggregated_transaction in tqdm(aggregated_transactions):
         if aggregated_transactions_new.count_documents({"_id" : aggregated_transaction["_id"]}) == 0:
             transaction = transactions_collection.find_one({"tx_hash": aggregated_transaction["tx_hash"]})
@@ -42,5 +43,4 @@ def format_h_4():
             heuristics = {"4": True} if is_otc else {"4" : False}
             new_document = {"tx_hash": aggregated_transaction["tx_hash"], "block_height": transaction["height"], "otc_output": otc_output, "other_output": other_output, "heuristics": heuristics} 
             aggregated_transactions_new.insert_one(new_document)
-
 format_h_4()

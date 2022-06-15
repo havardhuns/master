@@ -40,7 +40,7 @@ width = 0.35
 bottom = [0,0,0,0]
 colors = ["#003f5c", "#374c80", "#7a5195", "#bc5090", "#ef5675", "#ff764a", "#ffa600"]
 for i, block in enumerate(blocks):
-    ax.bar(labels, blocks[block], width, label=f'Block ~{str(block)}', bottom = bottom, edgecolor="black")
+    ax.bar(labels, blocks[block], width, label=f'Block ~{str(block)}', bottom = bottom, edgecolor="black", color=colors[i])
     bottom = sum_lists(bottom, blocks[block])
 ax.set_ylabel('Number of transactions')
 ax.set_xlabel('Heuristic')
@@ -48,5 +48,4 @@ ax.set_title(f'Transactions with OTC address based on heuristics. \nNumber of tr
 
 plt.yticks([tick for tick in range(0, 18001, 2000)])
 plt.legend()
-plt.grid(axis = 'y')
 plt.show()
