@@ -16,7 +16,7 @@ def otc_4_d1():
     proposed_otc_collection = db['data-set-1-otc-h-24']
     data_set_collection = db['data-set-1']
 
-    aggregated_transactions = aggregated_transaction_collection.find({"$or": [{"heuristics.1": True}, {"heuristics.2": True}]}).sort("block_height", -1)
+    aggregated_transactions = aggregated_transaction_collection.find({"$or": [{"heuristics.1": True}, {"heuristics.2": True}]}).sort("block_height", -1).sort("block_height", 1)
     aggregated_transactions = [x for x in aggregated_transactions]
     for aggregated_transaction in tqdm(aggregated_transactions):
         count = proposed_otc_collection.count_documents({"tx_hash" : aggregated_transaction["tx_hash"]})
